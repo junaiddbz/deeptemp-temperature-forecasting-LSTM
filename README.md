@@ -1,5 +1,13 @@
 # DeepTemp: Microclimate Temperature Forecasting with Stacked LSTMs
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://deeptemp-temperature-forecasting-lstm-fktncnfbik5xmzxi2yfpsz.streamlit.app/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> 🌐 **Live Interactive Web Console:** **[https://deeptemp-temperature-forecasting-lstm-fktncnfbik5xmzxi2yfpsz.streamlit.app/](https://deeptemp-temperature-forecasting-lstm-fktncnfbik5xmzxi2yfpsz.streamlit.app/)**  
+> Test the model on any date from 2000 to yesterday with physical WMO thermometer verification, or run live forward inferences with real-time Open-Meteo station telemetry.
+
 A machine learning study evaluating the capacity of Long Short-Term Memory (LSTM) recurrent neural networks to capture long-range temporal dependencies, annual seasonality, and local weather dynamics across multi-decade meteorological records.
 
 The project models historical daily temperature data (2000–2023) across three distinct climate zones in Pakistan:
