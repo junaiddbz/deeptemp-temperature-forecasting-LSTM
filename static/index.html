@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepTemp &mdash; Microclimate Temperature Forecasting</title>
+    <meta name="description" content="PyTorch Stacked LSTM temperature forecasting with historical comparative analysis and live forward inference.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- Top Clean Header -->
+        <header class="app-header">
+            <div class="brand-group">
+                <span class="brand-badge">DEEPTEMP</span>
+                <div class="brand-text">
+                    <h1>Microclimate Temperature Forecasting</h1>
+                    <span class="brand-subtitle">Stacked LSTM Neural Network &bull; 24-Year Ground Truth Climatology &bull; Live Weather Ingestion</span>
+                </div>
+            </div>
+
+            <!-- Regional Station Selector -->
+            <div class="city-selector-pills" id="city-selector">
+                <button class="city-pill active" data-city="islamabad" id="btn-city-isb">
+                    <span class="pill-name">Islamabad</span>
+                    <span class="pill-station">WMO 41571</span>
+                </button>
+                <button class="city-pill" data-city="lahore" id="btn-city-lhr">
+                    <span class="pill-name">Lahore</span>
+                    <span class="pill-station">WMO 41640</span>
+                </button>
+                <button class="city-pill" data-city="karachi" id="btn-city-khi">
+                    <span class="pill-name">Karachi</span>
+                    <span class="pill-station">WMO 41780</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Single Unified Date Control Bar -->
+        <section class="control-bar-card">
+            <div class="date-picker-wrap">
+                <label for="input-target-date">Select Target Forecast Date:</label>
+                <input type="date" id="input-target-date" min="2000-01-31" max="2026-10-25" value="2026-10-12" class="styled-date-input">
+                <span class="date-mode-tag" id="date-mode-badge">FUTURE FORECAST</span>
+            </div>
+
+            <div class="quick-jump-presets">
+                <button class="preset-btn active" data-date="2026-10-12" id="preset-tomorrow">&bull; Predict Tomorrow (Live)</button>
+                <button class="preset-btn" data-date="2026-10-11" id="preset-today">&bull; Today (Live)</button>
+                <button class="preset-btn" data-date="2026-10-10" id="preset-yesterday">Yesterday</button>
+                <button class="preset-btn" data-date="2022-06-08" id="preset-heatwave">June 2022 Heatwave</button>
+                <button class="preset-btn" data-date="2023-01-18" id="preset-coldsnap">Jan 2023 Cold Snap</button>
+                <button class="preset-btn" id="preset-random">Random Past Date</button>
+            </div>
+        </section>
+
+        <!-- Main Workspace Dual Grid -->
+        <main class="main-dashboard-grid">
+            <!-- Left Card: 30-Day Sequence & Forward Trajectory Chart -->
+            <div class="card chart-panel-card">
+                <div class="card-title-row">
+                    <div>
+                        <h3 id="chart-panel-title">30-Day Consecutive Observations &amp; Forecast</h3>
+                        <span class="chart-subtitle" id="chart-panel-subtitle">The Stacked LSTM takes 30 sliding-window observations to forecast the target date</span>
+                    </div>
+                    <span class="date-chip" id="chip-target-date">2026-10-12</span>
+                </div>
+
+                <div class="canvas-container-main">
+                    <canvas id="mainSequenceChart"></canvas>
+                </div>
+
+                <div class="chart-legend-strip">
+                    <span class="legend-item"><span class="legend-dot trail"></span> Past 30 Days Observed</span>
+                    <span class="legend-item"><span class="legend-dot pred"></span> LSTM Predicted</span>
+                    <span class="legend-item" id="legend-actual-item"><span class="legend-dot actual"></span> Actual Recorded Thermometer (API Ground-Truth)</span>
+                </div>
+            </div>
+
+            <!-- Right Card: Temperature Verification & Model Diagnostics -->
+            <div class="card verification-panel-card">
+                <!-- 1. Temperature Prediction vs Actual Comparative Box -->
+                <div class="analysis-section">
+                    <div class="section-title-row">
+                        <h4>1. Target Date Comparative Verification</h4>
+                        <span class="rating-tag" id="temp-rating-badge">LIVE INFERENCE (&plusmn;1.36&deg;C RMSE)</span>
+                    </div>
+
+                    <div class="metric-comparison-row">
+                        <div class="metric-box">
+                            <span class="box-label">DeepTemp LSTM Forecast</span>
+                            <div class="metric-value-huge highlight" id="temp-pred-val">23.2<span class="unit">&deg;C</span></div>
+                            <span class="box-subtext" id="temp-confidence-text">95% Confidence: [21.8&deg;C to 24.6&deg;C]</span>
+                        </div>
+
+                        <div class="vs-badge">VS</div>
+
+                        <div class="metric-box" id="box-actual-temp">
+                            <div class="box-label-row">
+                                <span class="box-label" id="label-actual-temp">Actual Recorded Thermometer</span>
+                                <span class="api-source-badge" id="api-source-badge"><span class="api-pulse-dot"></span> Open-Meteo API</span>
+                            </div>
+                            <div class="metric-value-huge" id="temp-actual-val">--<span class="unit">&deg;C</span></div>
+                            <span class="box-subtext" id="temp-delta-text">Observation Pending (Future Date)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Empirical Error & Accuracy Diagnostics -->
+                <div class="analysis-section">
+                    <div class="section-title-row">
+                        <h4>2. Empirical Accuracy &amp; Deviation Analysis</h4>
+                        <span class="rating-tag" id="accuracy-verdict-badge">ACCURACY BENCHMARK</span>
+                    </div>
+
+                    <div class="stats-mini-grid">
+                        <div class="mini-stat-card">
+                            <span class="mini-label">Prediction Deviation</span>
+                            <strong class="mini-val" id="stat-deviation">-- &deg;C</strong>
+                            <span class="mini-sub" id="stat-deviation-desc">Target vs Ground-Truth</span>
+                        </div>
+                        <div class="mini-stat-card">
+                            <span class="mini-label">Model Test RMSE</span>
+                            <strong class="mini-val" id="stat-test-rmse">&plusmn;1.36&deg;C</strong>
+                            <span class="mini-sub">Holdout Evaluation Baseline</span>
+                        </div>
+                        <div class="mini-stat-card">
+                            <span class="mini-label">Confidence Interval</span>
+                            <strong class="mini-val" id="stat-ci-range">[-- to --]</strong>
+                            <span class="mini-sub">&plusmn;1.96&sigma; Error Margin</span>
+                        </div>
+                    </div>
+
+                    <!-- Deviation Progress Bar -->
+                    <div class="deviation-visual-card">
+                        <div class="deviation-head">
+                            <span>Deviation vs 1-Sigma Model Bound:</span>
+                            <strong id="deviation-ratio-label">Pending Ground Truth</strong>
+                        </div>
+                        <div class="deviation-track">
+                            <div class="deviation-bar-fill" id="deviation-bar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 30-Day Sequence Input Profile -->
+                <div class="analysis-section">
+                    <div class="section-title-row">
+                        <h4>3. 30-Day Sequence Input Profile</h4>
+                        <span class="station-meta-badge" id="station-meta-badge">Station: WMO 41571</span>
+                    </div>
+
+                    <div class="sequence-summary-grid">
+                        <div class="seq-item">
+                            <span class="seq-label">30-Day Mean</span>
+                            <strong class="seq-val" id="seq-mean">-- &deg;C</strong>
+                        </div>
+                        <div class="seq-item">
+                            <span class="seq-label">30-Day Range</span>
+                            <strong class="seq-val" id="seq-range">-- to -- &deg;C</strong>
+                        </div>
+                        <div class="seq-item">
+                            <span class="seq-label">30-Day Trend</span>
+                            <strong class="seq-val" id="seq-trend">Analyzing...</strong>
+                        </div>
+                        <div class="seq-item">
+                            <span class="seq-label">Daily Volatility (&sigma;)</span>
+                            <strong class="seq-val" id="seq-volatility">&plusmn;-- &deg;C</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Clean Footer -->
+        <footer class="app-footer">
+            <div><strong>DeepTemp</strong> &bull; Multi-Layer PyTorch Stacked LSTM (2 Layers, 64 Hidden Units, Dropout 0.2)</div>
+            <div class="footer-meta">Trained on 8,766 contiguous daily steps per city (2000&ndash;2023 NOAA / Meteostat Ground Truth) &bull; Live Ingestion via Open-Meteo</div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

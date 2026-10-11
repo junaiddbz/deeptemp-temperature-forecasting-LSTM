@@ -1,0 +1,10 @@
+experiment,city,features,window_size,architecture,parameters,test_rmse,test_mae,train_time_sec
+Window Size: 14 days,islamabad,tavg,14,2L x 64H,50497,1.55,1.15,13.2
+Window Size: 30 days,islamabad,tavg,30,2L x 64H,50497,1.4,1.0,18.5
+Window Size: 60 days,islamabad,tavg,60,2L x 64H,50497,1.5,1.08,29.6
+Capacity: 1L x 32H,islamabad,tavg,30,1L x 32H,4513,1.58,1.14,7.6
+Capacity: 2L x 64H,islamabad,tavg,30,2L x 64H,50497,1.46,1.09,16.8
+Capacity: 3L x 128H,islamabad,tavg,30,3L x 128H,331393,1.38,0.99,54.5
+Production Model (Islamabad),islamabad,tavg,30,2L x 64H,50497,1.36,0.95,41.3
+Production Model (Lahore),lahore,tavg,30,2L x 64H,50497,1.59,1.19,79.8
+Production Model (Karachi),karachi,tavg,30,2L x 64H,50497,0.88,0.62,36.9
