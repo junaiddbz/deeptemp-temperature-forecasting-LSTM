@@ -105,18 +105,34 @@ def load_historical_data():
     return dfs
 
 
-def fetch_live_30_days(city_key):
-    """Fetches last 30 days of actual observed temperatures up to today via Open-Meteo."""
+@st.cache_data(ttl=3600)
+def fetch_recent_meteo_window(city_key):
+    """Fetches last 35 days of actual observed temperatures up to today via Open-Meteo."""
     coords = CITY_INFO[city_key.capitalize()]["coords"]
     lat, lon = coords
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_mean&past_days=30&forecast_days=1&timezone=auto"
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_mean&past_days=35&forecast_days=1&timezone=auto"
     req = urllib.request.Request(url, headers={"User-Agent": "DeepTemp/Streamlit"})
     with urllib.request.urlopen(req, timeout=5) as resp:
         data = json.loads(resp.read().decode("utf-8"))
 
-    dates = [datetime.date.fromisoformat(d) for d in data["daily"]["time"][:30]]
-    temps = [round(float(x), 1) for x in data["daily"]["temperature_2m_mean"][:30]]
-    return dates, temps
+    times = [datetime.date.fromisoformat(d) for d in data["daily"]["time"]]
+    temps = [round(float(x), 1) for x in data["daily"]["temperature_2m_mean"]]
+    return times, temps
+
+
+@st.cache_data(ttl=86400)
+def fetch_archive_meteo_window(city_key, target_date):
+    """Fetches 30 days prior and target date temperature from Open-Meteo Archive API."""
+    coords = CITY_INFO[city_key.capitalize()]["coords"]
+    lat, lon = coords
+    start_date = target_date - datetime.timedelta(days=30)
+    url = f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}&start_date={start_date.isoformat()}&end_date={target_date.isoformat()}&daily=temperature_2m_mean&timezone=auto"
+    req = urllib.request.Request(url, headers={"User-Agent": "DeepTemp/Streamlit"})
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    times = [datetime.date.fromisoformat(d) for d in data["daily"]["time"]]
+    temps = [round(float(x), 1) for x in data["daily"]["temperature_2m_mean"]]
+    return times[:-1], temps[:-1], temps[-1]
 
 
 # Initialize Models and Data
@@ -203,7 +219,13 @@ if not is_historical:
     # Live / Future Prediction
     days_ahead = (selected_date - TODAY_DATE).days
     try:
-        trail_dates, trail_temps = fetch_live_30_days(city_key)
+        times, temps = fetch_recent_meteo_window(city_key)
+        if TODAY_DATE in times:
+            t_idx = times.index(TODAY_DATE)
+        else:
+            t_idx = len(times) - 1
+        trail_dates = times[t_idx - 30:t_idx]
+        trail_temps = temps[t_idx - 30:t_idx]
     except Exception:
         df_h = _HISTORICAL_DFS[city_key]
         trail_dates = df_h.iloc[-30:]["date"].tolist()
@@ -241,6 +263,7 @@ else:
     matches = hist_df[hist_df["date"] == selected_date].index
 
     if len(matches) > 0:
+        # Date is in 2000-2023 preloaded dataset
         row_idx = int(matches[0])
         if row_idx < 30:
             row_idx = 30
@@ -252,12 +275,33 @@ else:
         trail_temps = [round(float(x), 1) for x in trail_slice["tavg"].tolist()]
         api_source = "Sourced via NOAA / Meteostat Station API"
     else:
-        # 2024 to yesterday
-        trail_slice = hist_df.iloc[-30:]
-        trail_dates = trail_slice["date"].tolist()
-        trail_temps = [round(float(x), 1) for x in trail_slice["tavg"].tolist()]
-        actual_temp = 25.0
-        api_source = "Sourced via Open-Meteo Archive API"
+        # Date is in 2024–2026 (including yesterday 2026-10-10)
+        days_from_today = (TODAY_DATE - selected_date).days
+        if days_from_today <= 30:
+            # Recent dates within the last 30 days: use live Open-Meteo window
+            times, temps = fetch_recent_meteo_window(city_key)
+            if selected_date in times:
+                s_idx = times.index(selected_date)
+                actual_temp = temps[s_idx]
+                trail_dates = times[s_idx - 30:s_idx]
+                trail_temps = temps[s_idx - 30:s_idx]
+            else:
+                s_idx = len(times) - 2 # fallback to yesterday
+                actual_temp = temps[s_idx]
+                trail_dates = times[s_idx - 30:s_idx]
+                trail_temps = temps[s_idx - 30:s_idx]
+            api_source = "Sourced via Open-Meteo Live Station Telemetry"
+        else:
+            # Earlier dates in 2024-2026: query Open-Meteo archive
+            try:
+                trail_dates, trail_temps, actual_temp = fetch_archive_meteo_window(city_key, selected_date)
+                api_source = "Sourced via Open-Meteo Archive API"
+            except Exception:
+                trail_slice = hist_df.iloc[-30:]
+                trail_dates = trail_slice["date"].tolist()
+                trail_temps = [round(float(x), 1) for x in trail_slice["tavg"].tolist()]
+                actual_temp = 25.0
+                api_source = "Estimated Climatology Baseline"
 
     scaled_trail = [t * scale_v + min_v for t in trail_temps]
     inp_tensor = torch.tensor(scaled_trail, dtype=torch.float32).view(1, 30, 1)
