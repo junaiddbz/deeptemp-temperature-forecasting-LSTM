@@ -357,12 +357,12 @@ class DeepTempUnifiedHandler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def run_server(port: int = 8000):
-    server_address = ("127.0.0.1", port)
+def run_server(host: str = "0.0.0.0", port: int = 8000):
+    server_address = (host, port)
     httpd = HTTPServer(server_address, DeepTempUnifiedHandler)
     print("=" * 60)
     print("DeepTemp: Unified Temperature Forecasting Server Running")
-    print(f"URL: http://127.0.0.1:{port}/")
+    print(f"URL: http://{host}:{port}/")
     print("=" * 60)
     try:
         httpd.serve_forever()
@@ -371,7 +371,9 @@ def run_server(port: int = 8000):
 
 
 if __name__ == "__main__":
+    default_port = int(os.environ.get("PORT", 8000))
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--host", type=str, default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=default_port)
     args = parser.parse_args()
-    run_server(args.port)
+    run_server(args.host, args.port)
