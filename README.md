@@ -116,7 +116,7 @@ Full experiment logs are recorded in `reports/experiment_results.csv`.
 
 ## Interactive Forecasting & Verification Console
 
-The repository includes a modern, zero-fluff web dashboard (`src/app.py`):
+The repository includes a modern, zero-fluff interactive web application powered by **Streamlit & Plotly** (`app.py`):
 
 1. **Historical Comparative Analysis (2000–Yesterday):**
    * Select any date in the 24-year timeline.
@@ -135,6 +135,9 @@ The repository includes a modern, zero-fluff web dashboard (`src/app.py`):
 ```
 Temperature Forecasting/
 ├── .gitignore                         # Standard Python & PyTorch exclusions
+├── .streamlit/                        # Custom dark theme configuration
+│   └── config.toml
+├── app.py                             # Interactive Streamlit Web Console
 ├── checkpoints/                       # Pre-trained Stacked LSTM model checkpoints
 │   ├── islamabad_lstm_best.pt
 │   ├── karachi_lstm_best.pt
@@ -161,7 +164,6 @@ Temperature Forecasting/
 │   ├── model_architecture.png
 │   └── training_convergence_comparison.png
 ├── src/
-│   ├── app.py                         # Clean web server for live & historical forecasting
 │   ├── data_loader.py                 # Imputation, scaling, sliding-window DataLoaders
 │   ├── evaluate_extremes.py           # Extreme event (heatwaves/cold snaps) analysis
 │   ├── experiments.py                 # Automated ablation and tuning runner
@@ -169,10 +171,6 @@ Temperature Forecasting/
 │   ├── model.py                       # PyTorch StackedLSTM neural network architecture
 │   ├── predict.py                     # Out-of-sample evaluation & inverse MinMax scaling
 │   └── train.py                       # Training loop with scheduler & checkpointing
-├── static/                            # Clean single-view web dashboard
-│   ├── app.js                         # Dynamic Chart.js and API telemetry controller
-│   ├── index.html                     # Semantic responsive markup
-│   └── style.css                      # Modern dark glassmorphic styling
 ├── requirements.txt                   # Pinned project dependencies
 └── README.md                          # Full research documentation & benchmark report
 ```
@@ -184,20 +182,26 @@ Temperature Forecasting/
 ### 1. Installation
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/temperature-forecasting.git
-cd temperature-forecasting
+git clone https://github.com/junaiddbz/deeptemp-temperature-forecasting-LSTM.git
+cd deeptemp-temperature-forecasting-LSTM
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Launching the Interactive Web Console
+### 2. Launching the Interactive Web Console Locally
 ```bash
-python src/app.py --port 8000
+streamlit run app.py
 ```
-Open **[http://127.0.0.1:8000/](http://127.0.0.1:8000/)** in any browser.
+Open **[http://localhost:8501](http://localhost:8501)** in any browser.
 
-### 3. Model Training & Evaluation
+### 3. Deploying for Free to Streamlit Cloud
+1. Go to **[share.streamlit.io](https://share.streamlit.io/)** and sign in with GitHub.
+2. Select repository: `junaiddbz/deeptemp-temperature-forecasting-LSTM`.
+3. Set **Main file path** to `app.py`.
+4. Click **Deploy!**
+
+### 4. Model Training & Evaluation
 ```bash
 # Train on a single city (e.g., Islamabad)
 python src/train.py --city islamabad --epochs 25 --batch_size 32 --window_size 30 --lr 0.001
